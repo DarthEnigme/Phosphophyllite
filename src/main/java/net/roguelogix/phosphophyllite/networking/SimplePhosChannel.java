@@ -33,7 +33,7 @@ public class SimplePhosChannel {
             final var type = pair.first();
             final StreamCodec<FriendlyByteBuf, CompoundPacket> codec = StreamCodec.of(
                     (buf, packet) -> buf.writeByteArray(ROBN.toROBN(packet.compound).toByteArray()),
-                    (buf) -> new CompoundPacket((PhosphophylliteCompound) ROBN.fromROBN(ByteArrayList.wrap(buf.readByteArray())), type)
+                    (buf) -> new CompoundPacket(new PhosphophylliteCompound(buf.readByteArray()), type)
             );
             event.registrar(type.id().getNamespace()).playBidirectional(type, codec, pair.second());
         }
