@@ -4,7 +4,8 @@ package net.roguelogix.phosphophyllite.blocks.whiteholes;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
@@ -51,15 +52,15 @@ public class FluidWhiteHole extends Block implements EntityBlock {
     }
     
     @Override
-    public InteractionResult use(BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
         Item item = player.getMainHandItem().getItem();
         if(item instanceof BucketItem){
             var te = worldIn.getBlockEntity(pos);
             if(te instanceof FluidWhiteHoleTile){
-                ((FluidWhiteHoleTile)te).setFluid(((BucketItem) item).getFluid());
-                return InteractionResult.SUCCESS;
+                ((FluidWhiteHoleTile)te).setFluid(((BucketItem) item).content);
+                return ItemInteractionResult.SUCCESS;
             }
         }
-        return super.use(state, worldIn, pos, player, handIn, hit);
+        return super.useItemOn(stack, state, worldIn, pos, player, handIn, hit);
     }
 }

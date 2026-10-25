@@ -17,16 +17,18 @@ Library for the BiggerSeries mods
 
 [[dependencies.phosphophyllite]] 
     modId="neoforge"
-    required=true
+    type="required"
     versionRange="[${neo_version},)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.phosphophyllite]]
     modId="minecraft"
-    required=true
+    type="required"
     versionRange="[${minecraft_version}]"
     ordering="NONE"
     side="BOTH"
 
 [[mixins]]
     config="phosphophyllite.mixins.json"
+[[accessTransformers]]
+    file="META-INF/accesstransformer.cfg"

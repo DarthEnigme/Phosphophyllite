@@ -48,7 +48,7 @@ public class ConfigManager {
     static final Logger LOGGER = LogManager.getLogger("Phosphophyllite/Config");
     private static class ClassLoadingHelper {
         public static final SimplePhosChannel NETWORK_CHANNEL = new SimplePhosChannel(
-                new ResourceLocation(modid, "phosphophyllite/configsync"),
+                ResourceLocation.fromNamespaceAndPath(modid, "phosphophyllite/configsync"),
                 ConfigManager::clientPacketHandler,
                 ConfigManager::serverPacketHandler
         );

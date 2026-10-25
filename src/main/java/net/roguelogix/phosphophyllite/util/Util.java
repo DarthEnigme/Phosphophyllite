@@ -3,7 +3,6 @@ package net.roguelogix.phosphophyllite.util;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import cpw.mods.modlauncher.api.LamdbaExceptionUtils;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
@@ -27,7 +26,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.jetbrains.annotations.Contract;
@@ -93,7 +92,7 @@ public class Util {
     
     public static JsonObject readJSONFile(ResourceLocation location) {
         if (location.getPath().lastIndexOf(".json") != location.getPath().length() - 5) {
-            location = new ResourceLocation(location.getNamespace(), location.getPath() + ".json");
+            location = ResourceLocation.fromNamespaceAndPath(location.getNamespace(), location.getPath() + ".json");
         }
         String jsonString = readResourceLocation(location);
         if (jsonString == null) {
@@ -480,8 +479,8 @@ public class Util {
     }
     
     
-    private static final TagKey<Item> WRENCH_TAG_0 = TagKey.create(Registries.ITEM, new ResourceLocation("forge:tools/wrench"));
-    private static final TagKey<Item> WRENCH_TAG_1 = TagKey.create(Registries.ITEM, new ResourceLocation("forge:wrenches"));
+    private static final TagKey<Item> WRENCH_TAG_0 = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:tools/wrench"));
+    private static final TagKey<Item> WRENCH_TAG_1 = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:wrenches"));
     
     public static boolean isWrench(Item item) {
         return item.builtInRegistryHolder().is(WRENCH_TAG_0) || item.builtInRegistryHolder().is(WRENCH_TAG_1);

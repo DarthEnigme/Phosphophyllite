@@ -5,6 +5,8 @@ import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
@@ -50,14 +52,24 @@ public class ItemWhiteHole extends Block implements EntityBlock {
     }
     
     @Override
-    public InteractionResult use(BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level worldIn, BlockPos pos, Player player, BlockHitResult hit) {
         BlockEntity te = worldIn.getBlockEntity(pos);
         if (te instanceof ItemWhiteHoleTile) {
             Item item = player.getMainHandItem().getItem();
             ((ItemWhiteHoleTile) te).setItem(item);
             return InteractionResult.SUCCESS;
         }
-        return super.use(state, worldIn, pos, player, handIn, hit);
+        return super.useWithoutItem(state, worldIn, pos, player, hit);
+    }
+    
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+        BlockEntity te = worldIn.getBlockEntity(pos);
+        if (te instanceof ItemWhiteHoleTile) {
+            ((ItemWhiteHoleTile) te).setItem(stack.getItem());
+            return ItemInteractionResult.SUCCESS;
+        }
+        return super.useItemOn(stack, state, worldIn, pos, player, handIn, hit);
     }
     
 

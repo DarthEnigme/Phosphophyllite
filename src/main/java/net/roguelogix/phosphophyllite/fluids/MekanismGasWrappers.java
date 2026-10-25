@@ -1,14 +1,14 @@
 package net.roguelogix.phosphophyllite.fluids;
 
 import mekanism.api.Action;
-import mekanism.api.chemical.gas.Gas;
-import mekanism.api.chemical.gas.GasStack;
-import mekanism.api.chemical.gas.IGasHandler;
+import mekanism.api.chemical.Chemical;
+import mekanism.api.chemical.ChemicalStack;
+import mekanism.api.chemical.IChemicalHandler;
 import mekanism.api.recipes.RotaryRecipe;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -40,50 +40,50 @@ import java.util.concurrent.Executor;
 @MethodsReturnNonnullByDefault
 public class MekanismGasWrappers {
     
-    public static IGasHandler wrap(IPhosphophylliteFluidHandler fluidHandler) {
+    public static IChemicalHandler wrap(IPhosphophylliteFluidHandler fluidHandler) {
         return new MekanismGasWrappers.FluidToGasWrapper(fluidHandler);
     }
     
-    public static IPhosphophylliteFluidHandler wrap(IGasHandler gasHandler) {
+    public static IPhosphophylliteFluidHandler wrap(IChemicalHandler gasHandler) {
         return new MekanismGasWrappers.GasToFluidWrapper(gasHandler);
     }
     
-    public static IGasHandler EMPTY_TANK;
+    public static IChemicalHandler EMPTY_TANK;
     
     static {
-        EMPTY_TANK = new IGasHandler() {
+        EMPTY_TANK = new IChemicalHandler() {
             @Override
-            public int getTanks() {
+            public int getChemicalTanks() {
                 return 0;
             }
             
             @Override
-            public GasStack getChemicalInTank(int tank) {
-                return GasStack.EMPTY;
+            public ChemicalStack getChemicalInTank(int tank) {
+                return ChemicalStack.EMPTY;
             }
             
             @Override
-            public void setChemicalInTank(int tank, GasStack stack) {
+            public void setChemicalInTank(int tank, ChemicalStack stack) {
             }
             
             @Override
-            public long getTankCapacity(int tank) {
+            public long getChemicalTankCapacity(int tank) {
                 return 0;
             }
             
             @Override
-            public boolean isValid(int tank, GasStack stack) {
+            public boolean isValid(int tank, ChemicalStack stack) {
                 return false;
             }
             
             @Override
-            public GasStack insertChemical(int tank, GasStack stack, Action action) {
+            public ChemicalStack insertChemical(int tank, ChemicalStack stack, Action action) {
                 return stack;
             }
             
             @Override
-            public GasStack extractChemical(int tank, long amount, Action action) {
-                return GasStack.EMPTY;
+            public ChemicalStack extractChemical(int tank, long amount, Action action) {
+                return ChemicalStack.EMPTY;
             }
         };
     }
@@ -91,8 +91,8 @@ public class MekanismGasWrappers {
     private static final Logger LOGGER = LogManager.getLogger("Phosphophyllite/MekanismIntegration");
     
     private static class Mapping {
-        final List<Gas> gases = new ArrayList<>();
-        final List<GasStack> gasStacks = new ArrayList<>();
+        final List<Chemical> gases = new ArrayList<>();
+        final List<ChemicalStack> gasStacks = new ArrayList<>();
         long gasToFluidGasUnits = -1;
         long gasToFluidFluidUnits = -1;
         final List<Fluid> fluids = new ArrayList<>();
@@ -101,7 +101,7 @@ public class MekanismGasWrappers {
         long fluidToGasFluidUnits = -1;
     }
     
-    private static final Map<Gas, Mapping> gasToFluidMap = new HashMap<>();
+    private static final Map<Chemical, Mapping> gasToFluidMap = new HashMap<>();
     private static final Map<Fluid, Mapping> fluidToGasMap = new HashMap<>();
     
     @OnModLoad(required = false)
@@ -166,7 +166,7 @@ public class MekanismGasWrappers {
         fluidToGasMap.clear();
         
         @SuppressWarnings("unchecked")
-        RecipeType<RotaryRecipe> type = (RecipeType<RotaryRecipe>) BuiltInRegistries.RECIPE_TYPE.get(new ResourceLocation("mekanism:rotary"));
+        RecipeType<RotaryRecipe> type = (RecipeType<RotaryRecipe>) BuiltInRegistries.RECIPE_TYPE.get(ResourceLocation.parse("mekanism:rotary"));
         if (type == null || server == null) {
             return;
         }
@@ -175,14 +175,14 @@ public class MekanismGasWrappers {
         for (var recipeHolder : recipes) {
             var recipe = recipeHolder.value();
             Mapping mapping = new Mapping();
-            if (recipe.hasGasToFluid()) {
+            if (recipe.hasChemicalToFluid()) {
                 
-                List<GasStack> inputs = recipe.getGasInput().getRepresentations();
-                for (GasStack input : inputs) {
-                    Gas gas = input.getType();
+                List<ChemicalStack> inputs = recipe.getChemicalInput().getRepresentations();
+                for (ChemicalStack input : inputs) {
+                    Chemical gas = input.getChemical();
                     long amount = input.getAmount();
                     if (mapping.gasToFluidGasUnits != -1 && mapping.gasToFluidGasUnits != amount) {
-                        LOGGER.warn("Input amount discrepancy in rotary recipe " + recipeHolder.id() + " with gas " + gas.getName() + " wanting " + amount + " input while a different gas wants " + mapping.gasToFluidGasUnits);
+                        LOGGER.warn("Input amount discrepancy in rotary recipe " + recipeHolder.id() + " with gas " + gas + " wanting " + amount + " input while a different gas wants " + mapping.gasToFluidGasUnits);
                         continue;
                     }
                     if (!mapping.gases.contains(gas)) {
@@ -191,11 +191,9 @@ public class MekanismGasWrappers {
                     mapping.gasToFluidGasUnits = amount;
                 }
                 
-                // TODO: this is broken, need to update to the 1.20.2 API
-                //       this bullshittery gets it to compile though
-                FluidStack output = ((List<FluidStack>)((Object)recipe.getFluidOutputDefinition())).get(0);
-                if (!mapping.fluids.contains(output.getRawFluid())) {
-                    mapping.fluids.add(output.getRawFluid());
+                FluidStack output = recipe.getFluidOutputDefinition().get(0);
+                if (!mapping.fluids.contains(output.getFluid())) {
+                    mapping.fluids.add(output.getFluid());
                 }
                 mapping.gasToFluidFluidUnits = output.getAmount();
                 
@@ -208,15 +206,13 @@ public class MekanismGasWrappers {
                 mapping.gasToFluidGasUnits /= GCD;
                 mapping.gasToFluidFluidUnits /= GCD;
             }
-            if (recipe.hasFluidToGas()) {
+            if (recipe.hasFluidToChemical()) {
                 
-                // TODO: this is broken, need to update to the 1.20.2 API
-                //       this bullshittery gets it to compile though
-                List<FluidStack> inputs = null;
+                List<FluidStack> inputs = recipe.getFluidInput().getRepresentations();
                 for (FluidStack input : inputs) {
-                    Fluid fluid = input.getRawFluid();
+                    Fluid fluid = input.getFluid();
                     long amount = input.getAmount();
-                    if (mapping.gasToFluidGasUnits != -1 && mapping.gasToFluidGasUnits != amount) {
+                    if (mapping.fluidToGasFluidUnits != -1 && mapping.fluidToGasFluidUnits != amount) {
                         LOGGER.warn("Input amount discrepancy in rotary recipe " + recipeHolder.id() + " with fluid " + BuiltInRegistries.FLUID.getKey(fluid) + " wanting " + amount + " input while a different gas wants " + mapping.fluidToGasFluidUnits);
                         continue;
                     }
@@ -226,9 +222,9 @@ public class MekanismGasWrappers {
                     mapping.fluidToGasFluidUnits = amount;
                 }
                 
-                GasStack output = recipe.getGasOutputDefinition().get(0);
-                if (!mapping.gases.contains(output.getRaw())) {
-                    mapping.gases.add(output.getRaw());
+                ChemicalStack output = recipe.getChemicalOutputDefinition().get(0);
+                if (!mapping.gases.contains(output.getChemical())) {
+                    mapping.gases.add(output.getChemical());
                 }
                 mapping.fluidToGasGasUnits = output.getAmount();
                 
@@ -242,25 +238,25 @@ public class MekanismGasWrappers {
                 mapping.fluidToGasFluidUnits /= GCD;
             }
             
-            for (Gas gas : mapping.gases) {
+            for (Chemical gas : mapping.gases) {
                 Mapping oldMapping = gasToFluidMap.put(gas, mapping);
                 if (oldMapping != null) {
-                    LOGGER.warn("Duplicate gas entry for gas " + gas.getName());
+                    LOGGER.warn("Duplicate gas entry for gas " + gas);
                 }
-                mapping.gasStacks.add(gas.getStack(0));
+                mapping.gasStacks.add(new ChemicalStack(gas, 1));
             }
             for (Fluid fluid : mapping.fluids) {
                 Mapping oldMapping = fluidToGasMap.put(fluid, mapping);
                 if (oldMapping != null) {
                     LOGGER.warn("Duplicate fluid entry for fluid " + BuiltInRegistries.FLUID.getKey(fluid));
                 }
-                mapping.fluidStacks.add(new FluidStack(fluid, 0));
+                mapping.fluidStacks.add(new FluidStack(fluid, 1));
             }
         }
     }
     
     private static void removeMapping(Mapping mapping) {
-        for (Gas gas : mapping.gases) {
+        for (Chemical gas : mapping.gases) {
             gasToFluidMap.remove(gas);
         }
         for (Fluid fluid : mapping.fluids) {
@@ -272,38 +268,38 @@ public class MekanismGasWrappers {
     
     
     private static class GasToFluidWrapper implements IPhosphophylliteFluidHandler {
-        IGasHandler gasHandler;
+        IChemicalHandler gasHandler;
         @Nullable
         Mapping lastMapping;
         
-        GasToFluidWrapper(IGasHandler handler) {
+        GasToFluidWrapper(IChemicalHandler handler) {
             gasHandler = handler;
         }
         
         @Override
         public int tankCount() {
-            return gasHandler.getTanks();
+            return gasHandler.getChemicalTanks();
         }
         
         @Override
         public long tankCapacity(int tank) {
             // this isn't 100% accurate, but i cant do much better
             // in most cases its 1:1 anyway, so, shouldn't matter
-            return gasHandler.getTankCapacity(tank);
+            return gasHandler.getChemicalTankCapacity(tank);
         }
         
         @Override
         public Fluid fluidTypeInTank(int tank) {
-            GasStack gasStack = gasHandler.getChemicalInTank(tank);
-            if (lastMapping == null || !lastMapping.gases.contains(gasStack.getRaw())) {
-                Mapping map = gasToFluidMap.get(gasStack.getRaw());
+            ChemicalStack gasStack = gasHandler.getChemicalInTank(tank);
+            if (lastMapping == null || !lastMapping.gases.contains(gasStack.getChemical())) {
+                Mapping map = gasToFluidMap.get(gasStack.getChemical());
                 if (map == null) {
                     return Fluids.EMPTY;
                 }
                 lastMapping = map;
             }
             if (lastMapping.fluids.isEmpty()) {
-                LOGGER.error("Gas mapping for " + gasStack.getRaw().getName() + " has zero fluid elements, removing");
+                LOGGER.error("Chemical mapping for " + gasStack.getChemical() + " has zero fluid elements, removing");
                 removeMapping(lastMapping);
                 lastMapping = null;
                 return Fluids.EMPTY;
@@ -312,7 +308,7 @@ public class MekanismGasWrappers {
         }
         
         @Override
-        public CompoundTag fluidTagInTank(int tank) {
+        public DataComponentPatch fluidTagInTank(int tank) {
             return null;
         }
         
@@ -321,9 +317,9 @@ public class MekanismGasWrappers {
             if (tank > tankCount()) {
                 return 0;
             }
-            GasStack gasStack = gasHandler.getChemicalInTank(tank);
-            if (lastMapping == null || !lastMapping.gases.contains(gasStack.getRaw())) {
-                Mapping map = gasToFluidMap.get(gasStack.getRaw());
+            ChemicalStack gasStack = gasHandler.getChemicalInTank(tank);
+            if (lastMapping == null || !lastMapping.gases.contains(gasStack.getChemical())) {
+                Mapping map = gasToFluidMap.get(gasStack.getChemical());
                 if (map == null) {
                     return 0;
                 }
@@ -355,7 +351,7 @@ public class MekanismGasWrappers {
         }
         
         @Override
-        public long fill(Fluid fluid, @Nullable CompoundTag tag, long amount, boolean simulate) {
+        public long fill(Fluid fluid, @Nullable DataComponentPatch tag, long amount, boolean simulate) {
             if (tag != null || fluid == Fluids.EMPTY) {
                 return 0;
             }
@@ -375,11 +371,10 @@ public class MekanismGasWrappers {
             if (lastMapping.fluidToGasGasUnits <= 0) {
                 return 0;
             }
-            GasStack stack = lastMapping.gasStacks.get(0);
             long gasAmount = amount;
             gasAmount *= lastMapping.fluidToGasGasUnits;
             gasAmount /= lastMapping.fluidToGasFluidUnits;
-            stack.setAmount(gasAmount);
+            ChemicalStack stack = lastMapping.gasStacks.get(0).copyWithAmount(gasAmount);
             stack = gasHandler.insertChemical(stack, Action.get(!simulate));
             long remainingFluid = stack.getAmount();
             remainingFluid *= lastMapping.fluidToGasFluidUnits;
@@ -388,7 +383,7 @@ public class MekanismGasWrappers {
         }
         
         @Override
-        public long drain(Fluid fluid, @Nullable CompoundTag tag, long amount, boolean simulate) {
+        public long drain(Fluid fluid, @Nullable DataComponentPatch tag, long amount, boolean simulate) {
             if (tag != null || fluid == Fluids.EMPTY) {
                 return 0;
             }
@@ -408,11 +403,10 @@ public class MekanismGasWrappers {
             if (lastMapping.gasToFluidFluidUnits <= 0) {
                 return 0;
             }
-            GasStack stack = lastMapping.gasStacks.get(0);
             long gasAmount = amount;
-            gasAmount *= lastMapping.gasToFluidFluidUnits;
-            gasAmount /= lastMapping.gasToFluidGasUnits;
-            stack.setAmount(gasAmount);
+            gasAmount *= lastMapping.gasToFluidGasUnits;
+            gasAmount /= lastMapping.gasToFluidFluidUnits;
+            ChemicalStack stack = lastMapping.gasStacks.get(0).copyWithAmount(gasAmount);
             stack = gasHandler.extractChemical(stack, Action.get(!simulate));
             long drained = stack.getAmount();
             drained *= lastMapping.gasToFluidGasUnits;
@@ -421,7 +415,7 @@ public class MekanismGasWrappers {
         }
     }
     
-    private static class FluidToGasWrapper implements IGasHandler {
+    private static class FluidToGasWrapper implements IChemicalHandler {
         
         IPhosphophylliteFluidHandler fluidHandler;
         Mapping lastMapping;
@@ -431,18 +425,18 @@ public class MekanismGasWrappers {
         }
         
         @Override
-        public int getTanks() {
+        public int getChemicalTanks() {
             return fluidHandler.tankCount();
         }
         
         @Override
-        public GasStack getChemicalInTank(int tank) {
+        public ChemicalStack getChemicalInTank(int tank) {
             Fluid fluid = fluidHandler.fluidTypeInTank(tank);
             long amount = fluidHandler.fluidAmountInTank(tank);
             if (lastMapping == null || !lastMapping.fluids.contains(fluid)) {
                 Mapping map = fluidToGasMap.get(fluid);
                 if (map == null) {
-                    return GasStack.EMPTY;
+                    return ChemicalStack.EMPTY;
                 }
                 lastMapping = map;
             }
@@ -450,36 +444,34 @@ public class MekanismGasWrappers {
                 LOGGER.error("Fluid mapping for " + BuiltInRegistries.FLUID.getKey(fluid) + " has zero gas elements, removing");
                 removeMapping(lastMapping);
                 lastMapping = null;
-                return GasStack.EMPTY;
+                return ChemicalStack.EMPTY;
             }
             amount *= lastMapping.fluidToGasGasUnits;
             amount /= lastMapping.fluidToGasFluidUnits;
-            GasStack stack = lastMapping.gasStacks.get(0);
-            stack.setAmount(amount);
-            return stack;
+            return lastMapping.gasStacks.get(0).copyWithAmount(amount);
         }
         
         @Override
-        public void setChemicalInTank(int tank, GasStack stack) {
+        public void setChemicalInTank(int tank, ChemicalStack stack) {
             throw new RuntimeException("Not implemented for this handler");
         }
         
         @Override
-        public long getTankCapacity(int tank) {
-            return fluidHandler.getTankCapacity(tank);
+        public long getChemicalTankCapacity(int tank) {
+            return fluidHandler.tankCapacity(tank);
         }
         
         @Override
-        public boolean isValid(int tank, GasStack stack) {
-            if (lastMapping == null || !lastMapping.gases.contains(stack.getRaw())) {
-                Mapping map = gasToFluidMap.get(stack.getRaw());
+        public boolean isValid(int tank, ChemicalStack stack) {
+            if (lastMapping == null || !lastMapping.gases.contains(stack.getChemical())) {
+                Mapping map = gasToFluidMap.get(stack.getChemical());
                 if (map == null) {
                     return false;
                 }
                 lastMapping = map;
             }
             if (lastMapping.fluids.isEmpty()) {
-                LOGGER.error("Gas mapping for " + stack.getRaw().getRegistryName() + " has zero fluid elements, removing");
+                LOGGER.error("Chemical mapping for " + stack.getChemical() + " has zero fluid elements, removing");
                 removeMapping(lastMapping);
                 lastMapping = null;
                 return false;
@@ -489,16 +481,16 @@ public class MekanismGasWrappers {
         }
         
         @Override
-        public GasStack insertChemical(int tank, GasStack stack, Action action) {
-            if (lastMapping == null || !lastMapping.gases.contains(stack.getRaw())) {
-                Mapping map = gasToFluidMap.get(stack.getRaw());
+        public ChemicalStack insertChemical(int tank, ChemicalStack stack, Action action) {
+            if (lastMapping == null || !lastMapping.gases.contains(stack.getChemical())) {
+                Mapping map = gasToFluidMap.get(stack.getChemical());
                 if (map == null) {
                     return stack;
                 }
                 lastMapping = map;
             }
             if (lastMapping.fluids.isEmpty()) {
-                LOGGER.error("Gas mapping for " + stack.getRaw().getRegistryName() + " has zero fluid elements, removing");
+                LOGGER.error("Chemical mapping for " + stack.getChemical() + " has zero fluid elements, removing");
                 removeMapping(lastMapping);
                 lastMapping = null;
                 return stack;
@@ -515,21 +507,21 @@ public class MekanismGasWrappers {
                 return stack;
             }
             if (filled == amount) {
-                return GasStack.EMPTY;
+                return ChemicalStack.EMPTY;
             }
             long remaining = amount - filled;
             remaining *= lastMapping.gasToFluidGasUnits;
             remaining /= lastMapping.gasToFluidFluidUnits;
-            return new GasStack(stack, remaining);
+            return stack.copyWithAmount(remaining);
         }
         
         @Override
-        public GasStack extractChemical(int tank, long gasAmount, Action action) {
+        public ChemicalStack extractChemical(int tank, long gasAmount, Action action) {
             Fluid fluid = fluidHandler.fluidTypeInTank(tank);
             if (lastMapping == null || !lastMapping.fluids.contains(fluid)) {
                 Mapping map = fluidToGasMap.get(fluid);
                 if (map == null) {
-                    return GasStack.EMPTY;
+                    return ChemicalStack.EMPTY;
                 }
                 lastMapping = map;
             }
@@ -537,22 +529,22 @@ public class MekanismGasWrappers {
                 LOGGER.error("Fluid mapping for " + fluid + " has zero gas elements, removing");
                 removeMapping(lastMapping);
                 lastMapping = null;
-                return GasStack.EMPTY;
+                return ChemicalStack.EMPTY;
             }
             if (lastMapping.fluidToGasFluidUnits <= 0) {
-                return GasStack.EMPTY;
+                return ChemicalStack.EMPTY;
             }
             long amount = gasAmount;
             amount *= lastMapping.fluidToGasFluidUnits;
             amount /= lastMapping.fluidToGasGasUnits;
             long drained = fluidHandler.drain(fluid, null, amount, action.simulate());
             if (drained == 0) {
-                return GasStack.EMPTY;
+                return ChemicalStack.EMPTY;
             }
-            long gasDrained = amount - drained;
+            long gasDrained = drained;
             gasDrained *= lastMapping.fluidToGasGasUnits;
             gasDrained /= lastMapping.fluidToGasFluidUnits;
-            return new GasStack(lastMapping.gases.get(0), gasDrained);
+            return new ChemicalStack(lastMapping.gases.get(0), gasDrained);
         }
     }
     

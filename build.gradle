@@ -1,10 +1,8 @@
 plugins {
     id 'java-library'
-    id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.gradle.userdev' version '7.0.+'
-    id 'net.neoforged.gradle.mixin' version '7.0.+'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
 version = "${majorVersion}.${minorVersion}.${patchVersion}"
@@ -42,37 +40,38 @@ if (!"$preReleasePostfix".isEmpty()) {
     version += "-${preReleasePostfix}"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-accessTransformers {
-    file 'src/main/resources/META-INF/accesstransformer.cfg'
-}
+neoForge {
+    version = neo_version
 
-runs {
-    configureEach {
-        workingDirectory project.file("run/${it.name}")
-
-        systemProperty 'forge.logging.markers', 'SCAN,REGISTRIES'
-        systemProperty 'forge.logging.console.level', 'debug'
-
-        modSource project.sourceSets.main
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
     }
 
-    client {
-        systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
-    }
-
-    server {
-        systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
-        programArgument '--nogui'
-    }
-
-    gameTestServer {
-        systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
-    }
-
-    data {
-        programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+    runs {
+        configureEach {
+            gameDirectory = project.file("run/${it.name}")
+            systemProperty 'forge.logging.markers', 'SCAN,REGISTRIES'
+            systemProperty 'forge.logging.console.level', 'debug'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        gameTestServer {
+            type = "gameTestServer"
+        }
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
     }
 }
 
@@ -87,9 +86,7 @@ repositories {
 }
 
 dependencies {
-    implementation "net.neoforged:neoforge:${neo_version}"
-
-    compileOnly "mekanism:Mekanism:1.19.2-10.3.5.474:api"
+    compileOnly "mekanism:Mekanism:${mekanism_version}:api"
 }
 
 tasks.withType(ProcessResources).configureEach {
@@ -101,7 +98,7 @@ tasks.withType(ProcessResources).configureEach {
     ]
     inputs.properties replaceProperties
 
-    filesMatching(['META-INF/mods.toml']) {
+    filesMatching(['META-INF/neoforge.mods.toml']) {
         expand replaceProperties + [project: project]
     }
 }
@@ -120,12 +117,7 @@ tasks.named('jar', Jar).configure {
     }
 }
 
-tasks.named('publish').configure {
-    dependsOn 'reobfJar'
-    mustRunAfter 'reobfJar'
-}
-
-task sourcesJar(type: Jar) {
+tasks.register('sourcesJar', Jar) {
     archiveClassifier = 'sources'
     from sourceSets.main.allSource
 }
@@ -156,4 +148,5 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+    options.compilerArgs.addAll(['-Xmaxerrs', '5000'])
 }

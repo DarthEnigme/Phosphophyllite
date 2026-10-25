@@ -28,12 +28,12 @@ public class SpecResourceLocationNode extends SpecValueNode {
     
     @Override
     public void writeFromString(String string) {
-        writeObject(string.equalsIgnoreCase("null") ? null : new ResourceLocation(string));
+        writeObject(string.equalsIgnoreCase("null") ? null : ResourceLocation.parse(string));
     }
     
     @Override
     public boolean isValueValid(String valueString) {
-        return ResourceLocation.isValidResourceLocation(valueString);
+        return ResourceLocation.tryParse(valueString) != null;
     }
     
     @Override

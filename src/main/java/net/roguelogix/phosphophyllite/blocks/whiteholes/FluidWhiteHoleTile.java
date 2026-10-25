@@ -3,7 +3,9 @@ package net.roguelogix.phosphophyllite.blocks.whiteholes;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,8 +20,6 @@ import net.roguelogix.phosphophyllite.registry.RegisterTile;
 
 import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
-
-import static net.neoforged.neoforge.fluids.FluidStack.loadFluidStackFromNBT;
 
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
@@ -85,13 +85,18 @@ public class FluidWhiteHoleTile extends PhosphophylliteTile implements IFluidHan
     @Override
     public CompoundTag writeNBT() {
         var compound = super.writeNBT();
-        compound.put("fluidstack", fluidStack.writeToNBT(new CompoundTag()));
+        if (!fluidStack.isEmpty()) {
+            compound.putString("fluid", BuiltInRegistries.FLUID.getKey(fluidStack.getFluid()).toString());
+        }
         return compound;
     }
     
     @Override
     public void readNBT(CompoundTag compound) {
-        fluidStack = loadFluidStackFromNBT(compound.getCompound("fluidstack"));
+        fluidStack = FluidStack.EMPTY;
+        if (compound.contains("fluid")) {
+            setFluid(BuiltInRegistries.FLUID.get(ResourceLocation.parse(compound.getString("fluid"))));
+        }
         super.readNBT(compound);
     }
     

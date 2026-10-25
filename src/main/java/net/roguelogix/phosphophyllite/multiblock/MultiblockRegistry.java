@@ -6,7 +6,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.TickEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.roguelogix.phosphophyllite.multiblock.validated.IValidatedMultiblock;
@@ -56,7 +57,7 @@ public final class MultiblockRegistry {
     }
     
     @SubscribeEvent
-    static void tickServer(TickEvent.ServerTickEvent e) {
+    static void tickServer(ServerTickEvent.Pre e) {
         for (MultiblockController<?, ?, ?> newController : newControllers) {
             controllersToTick.computeIfAbsent((ServerLevel) newController.level, k -> new ObjectArrayList<>()).add(newController);
         }
@@ -70,16 +71,21 @@ public final class MultiblockRegistry {
     }
     
     @SubscribeEvent
-    static void tickWorld(TickEvent.LevelTickEvent e) {
-        if (!(e.level instanceof ServerLevel)) {
+    static void tickWorldStart(LevelTickEvent.Pre e) {
+        if (!(e.getLevel() instanceof ServerLevel)) {
             return;
         }
-        Util.updateBlockStates(e.level);
-        if (e.phase != TickEvent.Phase.END) {
+        Util.updateBlockStates(e.getLevel());
+    }
+    
+    @SubscribeEvent
+    static void tickWorld(LevelTickEvent.Post e) {
+        if (!(e.getLevel() instanceof ServerLevel)) {
             return;
         }
+        Util.updateBlockStates(e.getLevel());
         
-        var controllersToTick = MultiblockRegistry.controllersToTick.get(e.level);
+        var controllersToTick = MultiblockRegistry.controllersToTick.get(e.getLevel());
         if (controllersToTick != null) {
             for (var controller : controllersToTick) {
                 if (controller != null) {

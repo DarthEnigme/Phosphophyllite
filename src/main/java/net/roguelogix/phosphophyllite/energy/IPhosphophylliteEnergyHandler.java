@@ -9,7 +9,7 @@ import net.roguelogix.phosphophyllite.util.API;
 @API
 public interface IPhosphophylliteEnergyHandler {
     
-    BlockCapability<IPhosphophylliteEnergyHandler, Direction> CAPABILITY = BlockCapability.createSided(new ResourceLocation(Phosphophyllite.modid, "energy"), IPhosphophylliteEnergyHandler.class);
+    BlockCapability<IPhosphophylliteEnergyHandler, Direction> CAPABILITY = BlockCapability.createSided(ResourceLocation.fromNamespaceAndPath(Phosphophyllite.modid, "energy"), IPhosphophylliteEnergyHandler.class);
     
     long insertEnergy(long maxInsert, boolean simulate);
     

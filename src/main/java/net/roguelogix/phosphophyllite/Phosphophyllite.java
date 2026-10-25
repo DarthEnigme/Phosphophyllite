@@ -11,7 +11,10 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
-import net.neoforged.neoforge.event.TickEvent;
+import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.roguelogix.phosphophyllite.config.ConfigType;
@@ -103,13 +106,7 @@ public class Phosphophyllite {
     }
     
     @SubscribeEvent
-    public void advanceTick(TickEvent.ServerTickEvent e) {
-        if (!e.side.isServer()) {
-            return;
-        }
-        if (e.phase != TickEvent.Phase.END) {
-            return;
-        }
+    public void advanceTick(ServerTickEvent.Post e) {
         tick++;
         
         // prevents deadlock
@@ -123,10 +120,7 @@ public class Phosphophyllite {
     }
     
     @SubscribeEvent
-    public void advanceTick(TickEvent.ClientTickEvent e) {
-        if (e.phase != TickEvent.Phase.START) {
-            return;
-        }
+    public void advanceTick(ClientTickEvent.Pre e) {
         
         // prevents deadlock
         final boolean[] run = {true};
@@ -139,11 +133,20 @@ public class Phosphophyllite {
     }
     
     @SubscribeEvent
-    public void tickWorld(TickEvent.LevelTickEvent e) {
-        if (!(e.level instanceof ServerLevel)) {
+    public void tickWorld(LevelTickEvent.Pre e) {
+        tickWorld(e.getLevel());
+    }
+    
+    @SubscribeEvent
+    public void tickWorld(LevelTickEvent.Post e) {
+        tickWorld(e.getLevel());
+    }
+    
+    private static void tickWorld(Level level) {
+        if (!(level instanceof ServerLevel)) {
             return;
         }
-        Util.updateBlockStates(e.level);
-        Util.worldTickEndEvent(e.level);
+        Util.updateBlockStates(level);
+        Util.worldTickEndEvent(level);
     }
 }

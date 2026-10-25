@@ -1,7 +1,7 @@
 package net.roguelogix.phosphophyllite.fluids;
 
 import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -41,13 +41,13 @@ public class FluidHandlerWrapper implements IPhosphophylliteFluidHandler {
     
     @Override
     public Fluid fluidTypeInTank(int tank) {
-        return handler.getFluidInTank(tank).getRawFluid();
+        return handler.getFluidInTank(tank).getFluid();
     }
     
     @Nullable
     @Override
-    public CompoundTag fluidTagInTank(int tank) {
-        return handler.getFluidInTank(tank).getTag();
+    public DataComponentPatch fluidTagInTank(int tank) {
+        return IPhosphophylliteFluidHandler.componentsOf(handler.getFluidInTank(tank));
     }
     
     @Override
@@ -55,38 +55,32 @@ public class FluidHandlerWrapper implements IPhosphophylliteFluidHandler {
         return handler.getFluidInTank(tank).getAmount();
     }
     
-    PhosphophylliteFluidStack scratchStack = new PhosphophylliteFluidStack();
-    
     @Override
     public boolean fluidValidForTank(int tank, Fluid fluid) {
         if(fluid == Fluids.EMPTY){
             return false;
         }
-        scratchStack.setFluid(fluid);
-        scratchStack.setAmount(0);
-        return handler.isFluidValid(tank, scratchStack);
+        return handler.isFluidValid(tank, new FluidStack(fluid, 1));
     }
     
     @Override
-    public long fill(Fluid fluid, @Nullable CompoundTag tag, long amount, boolean simulate) {
-        if(fluid == Fluids.EMPTY){
+    public long fill(Fluid fluid, @Nullable DataComponentPatch tag, long amount, boolean simulate) {
+        if(fluid == Fluids.EMPTY || amount <= 0){
             return 0;
         }
-        scratchStack.setFluid(fluid);
-        scratchStack.setTag(tag);
-        scratchStack.setAmount(amount);
-        return handler.fill(scratchStack, simulate ? FluidAction.SIMULATE : FluidAction.EXECUTE);
+        return handler.fill(stackOf(fluid, tag, amount), simulate ? FluidAction.SIMULATE : FluidAction.EXECUTE);
     }
     
     @Override
-    public long drain(Fluid fluid, @Nullable CompoundTag tag, long amount, boolean simulate) {
-        if(fluid == Fluids.EMPTY){
+    public long drain(Fluid fluid, @Nullable DataComponentPatch tag, long amount, boolean simulate) {
+        if(fluid == Fluids.EMPTY || amount <= 0){
             return 0;
         }
-        scratchStack.setFluid(fluid);
-        scratchStack.setTag(tag);
-        scratchStack.setAmount(amount);
-        FluidStack drained = handler.drain(scratchStack, simulate ? FluidAction.SIMULATE : FluidAction.EXECUTE);
+        FluidStack drained = handler.drain(stackOf(fluid, tag, amount), simulate ? FluidAction.SIMULATE : FluidAction.EXECUTE);
         return drained.getAmount();
+    }
+    
+    private static FluidStack stackOf(Fluid fluid, @Nullable DataComponentPatch tag, long amount) {
+        return new FluidStack(fluid.builtInRegistryHolder(), (int) Math.min(Integer.MAX_VALUE, amount), tag == null ? DataComponentPatch.EMPTY : tag);
     }
 }

@@ -6,6 +6,7 @@ import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -17,6 +18,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.roguelogix.phosphophyllite.modular.api.BlockModule;
 import net.roguelogix.phosphophyllite.modular.api.IModularBlock;
 import net.roguelogix.phosphophyllite.modular.api.ModuleRegistry;
+import net.roguelogix.phosphophyllite.util.InteractionResults;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -117,7 +119,11 @@ public class PhosphophylliteBlock extends Block implements IModularBlock {
     }
     
     @Override
-    public final InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+    protected final ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        return InteractionResults.toItemResult(use(state, level, pos, player, hand, hitResult));
+    }
+    
+    private InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         var result = onUse(state, level, pos, player, hand, hitResult);
         for (var module : moduleList) {
             var moduleResult = module.onUse(state, level, pos, player, hand, hitResult);

@@ -39,7 +39,7 @@ public class RenderHelper {
      * @return A completely empty texture atlas.
      */
     public static ResourceLocation getBlankTextureResource() {
-        return new ResourceLocation(Phosphophyllite.modid, "textures/blank.png");
+        return ResourceLocation.fromNamespaceAndPath(Phosphophyllite.modid, "textures/blank.png");
     }
 
     /**

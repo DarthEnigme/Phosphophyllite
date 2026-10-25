@@ -50,7 +50,7 @@ public class ItemWhiteHoleTile extends PhosphophylliteTile implements IItemHandl
     public void readNBT(@Nonnull CompoundTag compound) {
         super.readNBT(compound);
         if (compound.contains("item")) {
-            item = BuiltInRegistries.ITEM.get(new ResourceLocation(compound.getString("item")));
+            item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(compound.getString("item")));
         }
     }
     
@@ -64,7 +64,7 @@ public class ItemWhiteHoleTile extends PhosphophylliteTile implements IItemHandl
                 }
                 for (int i = 0; i < cap.getSlots(); i++) {
                     //noinspection deprecation
-                    cap.insertItem(i, new ItemStack(item, item.getMaxStackSize()), false);
+                    cap.insertItem(i, new ItemStack(item, item.getDefaultMaxStackSize()), false);
                 }
             }
         }
@@ -79,7 +79,7 @@ public class ItemWhiteHoleTile extends PhosphophylliteTile implements IItemHandl
     @Override
     public ItemStack getStackInSlot(int slot) {
         //noinspection deprecation
-        return new ItemStack(item, item.getMaxStackSize());
+        return new ItemStack(item, item.getDefaultMaxStackSize());
     }
     
     @Nonnull

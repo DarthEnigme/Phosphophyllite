@@ -123,7 +123,7 @@ public class Registry {
         
         LOGGER = LogManager.getLogger("Phosphophyllite/Registry/" + modNamespace);
         
-        creativeTabResourceLocation = new ResourceLocation(modNamespace, "creative_tab");
+        creativeTabResourceLocation = ResourceLocation.fromNamespaceAndPath(modNamespace, "creative_tab");
         creativeTabTitle = Component.translatable("item_group." + modNamespace);
         tabsBefore.add(CreativeModeTabs.SPAWN_EGGS.location());
         this.tabsBefore = tabsBefore;
@@ -401,7 +401,7 @@ public class Registry {
                 tileBlocks.computeIfAbsent(annotation.tileEntityClass(), k -> new LinkedList<>()).add(block);
             }
             
-            blockRegistryEvent.register(new ResourceLocation(registryName), block);
+            blockRegistryEvent.register(ResourceLocation.parse(registryName), block);
             
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Block registered: " + registryName);
@@ -414,7 +414,7 @@ public class Registry {
                     if (annotation.creativeTab()) {
                         creativeTabItems.add(item);
                     }
-                    itemRegistryEvent.register(new ResourceLocation(registryName), item);
+                    itemRegistryEvent.register(ResourceLocation.parse(registryName), item);
                     if (creativeTabBlock) {
                         if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("Creative tab item set as " + registryName + " for mod " + modNamespace);
@@ -494,7 +494,7 @@ public class Registry {
                 creativeTabItems.add(item);
             }
             
-            itemRegistryEvent.register(new ResourceLocation(registryName), item);
+            itemRegistryEvent.register(ResourceLocation.parse(registryName), item);
             
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Item registered: " + registryName);
@@ -531,7 +531,7 @@ public class Registry {
             }
             
             final String baseRegistryName = modid + ":" + name;
-            final var baseResourceLocation = new ResourceLocation(baseRegistryName);
+            final var baseResourceLocation = ResourceLocation.parse(baseRegistryName);
             
             PhosphophylliteFluid[] fluids = new PhosphophylliteFluid[2];
             Item[] bucketArray = new Item[1];
@@ -551,9 +551,9 @@ public class Registry {
                 @Override
                 public void initializeClient(Consumer<IClientFluidTypeExtensions> consumer) {
                     consumer.accept(new IClientFluidTypeExtensions() {
-                        final ResourceLocation stillTexture = new ResourceLocation(modid, "block/fluid/" + name + "_still");
-                        final ResourceLocation flowingTexture = new ResourceLocation(modid, "block/fluid/" + name + "_flowing");
-                        final ResourceLocation overlayTexture = new ResourceLocation(modid, "block/fluid/" + name + "_overlay");
+                        final ResourceLocation stillTexture = ResourceLocation.fromNamespaceAndPath(modid, "block/fluid/" + name + "_still");
+                        final ResourceLocation flowingTexture = ResourceLocation.fromNamespaceAndPath(modid, "block/fluid/" + name + "_flowing");
+                        final ResourceLocation overlayTexture = ResourceLocation.fromNamespaceAndPath(modid, "block/fluid/" + name + "_overlay");
                         
                         @Override
                         public ResourceLocation getStillTexture() {
@@ -600,7 +600,7 @@ public class Registry {
             
             fluids[0] = stillInstance;
             fluids[1] = flowingInstance;
-            blockArray[0] = new LiquidBlock(stillSupplier, Block.Properties.of().noCollission().explosionResistance(100.0F).noLootTable());
+            blockArray[0] = new LiquidBlock(stillInstance, Block.Properties.of().noCollission().explosionResistance(100.0F).noLootTable());
             
             for (Field declaredField : fluidClazz.getDeclaredFields()) {
                 if (declaredField.isAnnotationPresent(RegisterFluid.Instance.class)) {
@@ -628,7 +628,7 @@ public class Registry {
             }
             
             fluidRegistryEvent.register(baseResourceLocation, still);
-            fluidRegistryEvent.register(new ResourceLocation(baseRegistryName + "_flowing"), flowing);
+            fluidRegistryEvent.register(ResourceLocation.parse(baseRegistryName + "_flowing"), flowing);
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Fluid registered: " + baseResourceLocation);
             }
@@ -642,10 +642,10 @@ public class Registry {
             
             if (annotation.registerBucket()) {
                 itemRegistrationQueue.enqueue(() -> {
-                    BucketItem bucket = new BucketItem(() -> fluids[0], new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1));
+                    BucketItem bucket = new BucketItem(fluids[0], new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1));
                     creativeTabItems.add(bucket);
                     bucketArray[0] = bucket;
-                    itemRegistryEvent.register(new ResourceLocation(baseRegistryName + "_bucket"), bucket);
+                    itemRegistryEvent.register(ResourceLocation.parse(baseRegistryName + "_bucket"), bucket);
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("Bucket registered: " + baseResourceLocation);
                     }
@@ -759,7 +759,7 @@ public class Registry {
             if (type == null) {
                 return;
             }
-            containerRegistryEvent.register(new ResourceLocation(registryName), type);
+            containerRegistryEvent.register(ResourceLocation.parse(registryName), type);
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Container registered: " + registryName);
             }
@@ -863,7 +863,7 @@ public class Registry {
                 throw new IllegalStateException("Tile entity type unable to be saved for " + memberName + " in " + declaringClass.getSimpleName());
             }
             
-            tileRegistryEvent.register(new ResourceLocation(registryName), type);
+            tileRegistryEvent.register(ResourceLocation.parse(registryName), type);
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("TileEntity registered: " + registryName);
             }

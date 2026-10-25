@@ -3,6 +3,7 @@ package net.roguelogix.phosphophyllite.modular.tile;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -146,8 +147,8 @@ public class PhosphophylliteTile extends BlockEntity implements IModularTile, ID
     }
     
     @Override
-    public final void load(CompoundTag compound) {
-        super.load(compound);
+    protected final void loadAdditional(CompoundTag compound, HolderLookup.Provider registries) {
+        super.loadAdditional(compound, registries);
         if (compound.contains("local")) {
             CompoundTag local = compound.getCompound("local");
             readNBT(local);
@@ -184,7 +185,7 @@ public class PhosphophylliteTile extends BlockEntity implements IModularTile, ID
     }
     
     @Override
-    public final void saveAdditional(CompoundTag nbt) {
+    protected final void saveAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
         CompoundTag subNBTs = subNBTs(TileModule::writeNBT);
         if (subNBTs != null) {
             nbt.put("sub", subNBTs);
@@ -206,8 +207,8 @@ public class PhosphophylliteTile extends BlockEntity implements IModularTile, ID
     private static final CompoundTag EMPTY_TAG = new CompoundTag();
     
     @Override
-    public final void handleUpdateTag(CompoundTag compound) {
-        super.handleUpdateTag(compound);
+    public final void handleUpdateTag(CompoundTag compound, HolderLookup.Provider registries) {
+        super.handleUpdateTag(compound, registries);
         if (compound.contains("local")) {
             CompoundTag local = compound.getCompound("local");
             handleDataNBT(local);
@@ -232,8 +233,8 @@ public class PhosphophylliteTile extends BlockEntity implements IModularTile, ID
     }
     
     @Override
-    public final CompoundTag getUpdateTag() {
-        CompoundTag nbt = super.getUpdateTag();
+    public final CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag nbt = super.getUpdateTag(registries);
         CompoundTag subNBTs = subNBTs(TileModule::getDataNBT);
         if (subNBTs != null) {
             nbt.put("sub", subNBTs);
@@ -255,7 +256,7 @@ public class PhosphophylliteTile extends BlockEntity implements IModularTile, ID
     }
     
     @Override
-    public final void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
+    public final void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
         assert level != null;
         // getters are client only, so, cant grab it on the server even if i want to
         if (!level.isClientSide) {
@@ -293,7 +294,7 @@ public class PhosphophylliteTile extends BlockEntity implements IModularTile, ID
         if (!sendPacket) {
             return null;
         }
-        return ClientboundBlockEntityDataPacket.create(this, e -> nbt);
+        return ClientboundBlockEntityDataPacket.create(this, (e, registries) -> nbt);
     }
     
     protected void handleUpdateNBT(@SuppressWarnings("unused") CompoundTag nbt) {

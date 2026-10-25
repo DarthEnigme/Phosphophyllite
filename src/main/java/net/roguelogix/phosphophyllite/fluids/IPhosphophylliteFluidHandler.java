@@ -1,7 +1,7 @@
 package net.roguelogix.phosphophyllite.fluids;
 
 import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -17,13 +17,6 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
 public interface IPhosphophylliteFluidHandler extends IFluidHandler {
-    // TODO: fix this race condition
-    //       in single player, this stack can be used by both the server and client at the same time
-    //       also cant use this in multiple threads, but lots of things in MC are like that
-    //       real solution will probably be similar to what i did for energy, *wrappers*
-    
-    PhosphophylliteFluidStack stack = new PhosphophylliteFluidStack();
-    
     default IFluidHandler fluidHandlerCapability() {
         return this;
     }
@@ -36,13 +29,16 @@ public interface IPhosphophylliteFluidHandler extends IFluidHandler {
     
     @Nonnull
     default FluidStack getFluidInTank(int tank) {
-        stack.setFluid(fluidTypeInTank(tank));
-        if(stack.getRawFluid() == Fluids.EMPTY){
+        final var fluid = fluidTypeInTank(tank);
+        if (fluid == Fluids.EMPTY) {
             return FluidStack.EMPTY;
         }
-        stack.setAmount(fluidAmountInTank(tank));
-        stack.setTag(fluidTagInTank(tank));
-        return stack;
+        final var amount = (int) Math.min(Integer.MAX_VALUE, fluidAmountInTank(tank));
+        if (amount <= 0) {
+            return FluidStack.EMPTY;
+        }
+        final var components = fluidTagInTank(tank);
+        return new FluidStack(fluid.builtInRegistryHolder(), amount, components == null ? DataComponentPatch.EMPTY : components);
     }
     
     @Override
@@ -52,23 +48,23 @@ public interface IPhosphophylliteFluidHandler extends IFluidHandler {
     
     @Override
     default boolean isFluidValid(int tank, FluidStack resource) {
-        return fluidValidForTank(tank, resource.getRawFluid());
+        return fluidValidForTank(tank, resource.getFluid());
     }
     
     @Override
     default int fill(FluidStack resource, FluidAction action) {
-        return (int) fill(resource.getRawFluid(), resource.getTag(), resource.getAmount(), action.simulate());
+        return (int) fill(resource.getFluid(), componentsOf(resource), resource.getAmount(), action.simulate());
     }
     
     
     @Nonnull
     @Override
     default FluidStack drain(FluidStack resource, FluidAction action) {
-        int drainedAmount = (int) drain(resource.getRawFluid(), resource.getTag(), resource.getAmount(), action.simulate());
+        int drainedAmount = (int) drain(resource.getFluid(), componentsOf(resource), resource.getAmount(), action.simulate());
         if (drainedAmount == 0) {
             return FluidStack.EMPTY;
         }
-        return new FluidStack(resource, drainedAmount);
+        return resource.copyWithAmount(drainedAmount);
     }
     
     
@@ -78,9 +74,11 @@ public interface IPhosphophylliteFluidHandler extends IFluidHandler {
         
         int drainedAmount = 0;
         Fluid fluid = null;
+        DataComponentPatch components = null;
         for (int i = 0; i < tankCount(); i++) {
             fluid = fluidTypeInTank(i);
-            drainedAmount = (int) drain(fluid, fluidTagInTank(i), maxDrain, action.simulate());
+            components = fluidTagInTank(i);
+            drainedAmount = (int) drain(fluid, components, maxDrain, action.simulate());
             if (drainedAmount != 0) {
                 break;
             }
@@ -88,7 +86,16 @@ public interface IPhosphophylliteFluidHandler extends IFluidHandler {
         if (drainedAmount == 0) {
             return FluidStack.EMPTY;
         }
-        return new FluidStack(fluid, drainedAmount);
+        return new FluidStack(fluid.builtInRegistryHolder(), drainedAmount, components == null ? DataComponentPatch.EMPTY : components);
+    }
+    
+    /**
+     * @return the stack's component patch, or null if it has none, matching the pre-1.20.5 null tag convention
+     */
+    @Nullable
+    static DataComponentPatch componentsOf(FluidStack stack) {
+        final var patch = stack.getComponentsPatch();
+        return patch.isEmpty() ? null : patch;
     }
     
     int tankCount();
@@ -98,13 +105,13 @@ public interface IPhosphophylliteFluidHandler extends IFluidHandler {
     Fluid fluidTypeInTank(int tank);
     
     @Nullable
-    CompoundTag fluidTagInTank(int tank);
+    DataComponentPatch fluidTagInTank(int tank);
     
     long fluidAmountInTank(int tank);
     
     boolean fluidValidForTank(int tank, Fluid fluid);
     
-    long fill(Fluid fluid, @Nullable CompoundTag tag, long amount, boolean simulate);
+    long fill(Fluid fluid, @Nullable DataComponentPatch tag, long amount, boolean simulate);
     
-    long drain(Fluid fluid, @Nullable CompoundTag tag, long amount, boolean simulate);
+    long drain(Fluid fluid, @Nullable DataComponentPatch tag, long amount, boolean simulate);
 }

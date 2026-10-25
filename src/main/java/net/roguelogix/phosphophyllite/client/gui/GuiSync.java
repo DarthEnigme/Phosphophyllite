@@ -92,7 +92,7 @@ public class GuiSync {
     }
     
     public static final SimplePhosChannel INSTANCE = new SimplePhosChannel(
-            new ResourceLocation(modid, "multiblock/guisync"),
+            ResourceLocation.fromNamespaceAndPath(modid, "multiblock/guisync"),
             GuiSync::clientHandler, GuiSync::serverHandler
     );
     
@@ -150,7 +150,7 @@ public class GuiSync {
     }
     
     private static void serverHandler(PhosphophylliteCompound compound, IPayloadContext ctx) {
-        final var currentGUI = playerGUIs.get(ctx.player().orElse(null));
+        final var currentGUI = playerGUIs.get(ctx.player());
         if (currentGUI != null) {
             currentGUI.executeRequest((String) compound.get("request"), compound.get("data"));
         }
